@@ -1,16 +1,82 @@
 ---
+import { db, inArray, Story } from "astro:db";
+import "../styles/global.css";
 
+async function fetchApiStories(ids: number[]) {
+  const requests = ids.map((id) => {
+    return fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(
+      (response) => response.json(),
+    );
+  });
+  const results = await Promise.all(requests);
+
+  return results.map((s) => {
+    const { id, url, title } = s;
+    const date = new Date(s.time * 1000).toLocaleString();
+    const domain = new URL(url).hostname;
+
+    return { id, url, title, date, domain };
+  });
+}
+
+const storyListRequest = await fetch(
+  "https://hacker-news.firebaseio.com/v0/topstories.json",
+);
+const storyIDs = (await storyListRequest.json()).slice(0, 20);
+
+// Find stories that are already in the database
+const stories = await db
+  .select()
+  .from(Story)
+  .where(inArray(Story.id, storyIDs));
+const dbIDs = stories.map((s) => s.id);
+const requestIDs = storyIDs.filter((id: number) => !dbIDs.includes(id));
+
+// If there are new stories to fetch from HN
+// * Fetch them
+// * Add them to the beginning of the stories array
+// * Add them to the database
+if (requestIDs.length) {
+  const apiStories = await fetchApiStories(requestIDs);
+  stories.unshift(...apiStories);
+
+  console.log(`Adding ${apiStories.length} stories to DB`);
+  await db.insert(Story).values(apiStories).onConflictDoNothing();
+}
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Hacker News story fetcher</title>
+  </head>
+  <body>
+    <h1>Hacker News stories</h1>
+    <table>
+      {
+        stories.map(
+          (story: {
+            date: string;
+            url: string;
+            title: string;
+            domain: string;
+          }) => (
+            <tr>
+              <td>{story.date}</td>
+              <td>
+                <a href={story.url} target="_new">
+                  {story.title}
+                </a>
+                <br />
+                {story.domain}
+              </td>
+            </tr>
+          ),
+        )
+      }
+    </table>
+  </body>
 </html>
