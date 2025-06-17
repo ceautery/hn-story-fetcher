@@ -9,24 +9,10 @@ type ApiStory = {
   title: string;
 };
 
-function formatStory(story: ApiStory) {
-  const { id, time, url, title } = story;
-  return { id, time, url, title };
-}
-
-async function fetchApiStories(ids: number[]) {
-  const requests = ids.map((id) => {
-    return fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(
-      (response) => response.json(),
-    );
-  });
-  return (await Promise.all(requests)).map(formatStory);
-}
-
 const storyListRequest = await fetch(
   "https://hacker-news.firebaseio.com/v0/topstories.json",
 );
-const storyIDs = (await storyListRequest.json()).slice(0, 20);
+const storyIDs: number[] = (await storyListRequest.json()).slice(0, 20);
 
 // Find stories that are already in the database
 const stories = await db
@@ -34,14 +20,16 @@ const stories = await db
   .from(Story)
   .where(inArray(Story.id, storyIDs));
 const dbIDs = stories.map((s) => s.id);
-const requestIDs = storyIDs.filter((id: number) => !dbIDs.includes(id));
+const requestIDs = storyIDs.filter((id) => !dbIDs.includes(id));
 
-// If there are new stories to fetch from HN
-// * Fetch them
-// * Add them to the beginning of the stories array
-// * Add them to the database
+// If there are new stories, fetch them, add them to stories array and db
 if (requestIDs.length) {
-  const apiStories = await fetchApiStories(requestIDs);
+  const requests = requestIDs.map((id) =>
+    fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(
+      (response) => response.json(),
+    ),
+  );
+  const apiStories = await Promise.all(requests);
   stories.unshift(...apiStories);
 
   console.log(`Adding ${apiStories.length} stories to DB`);
