@@ -2,21 +2,25 @@
 import { db, inArray, Story } from "astro:db";
 import "../styles/global.css";
 
+type ApiStory = {
+  id: number;
+  time: number;
+  url: string;
+  title: string;
+};
+
+function formatStory(story: ApiStory) {
+  const { id, time, url, title } = story;
+  return { id, time, url, title };
+}
+
 async function fetchApiStories(ids: number[]) {
   const requests = ids.map((id) => {
     return fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(
       (response) => response.json(),
     );
   });
-  const results = await Promise.all(requests);
-
-  return results.map((s) => {
-    const { id, url, title } = s;
-    const date = new Date(s.time * 1000).toLocaleString();
-    const domain = new URL(url).hostname;
-
-    return { id, url, title, date, domain };
-  });
+  return (await Promise.all(requests)).map(formatStory);
 }
 
 const storyListRequest = await fetch(
@@ -57,25 +61,18 @@ if (requestIDs.length) {
     <h1>Hacker News stories</h1>
     <table>
       {
-        stories.map(
-          (story: {
-            date: string;
-            url: string;
-            title: string;
-            domain: string;
-          }) => (
-            <tr>
-              <td>{story.date}</td>
-              <td>
-                <a href={story.url} target="_new">
-                  {story.title}
-                </a>
-                <br />
-                {story.domain}
-              </td>
-            </tr>
-          ),
-        )
+        stories.map((story: ApiStory) => (
+          <tr>
+            <td>{new Date(story.time * 1000).toLocaleString()}</td>
+            <td>
+              <a href={story.url} target="_new">
+                {story.title}
+              </a>
+              <br />
+              {new URL(story.url).hostname}
+            </td>
+          </tr>
+        ))
       }
     </table>
   </body>
