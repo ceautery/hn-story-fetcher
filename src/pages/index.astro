@@ -32,11 +32,15 @@ if (requestIDs.length) {
     ),
   );
   const apiStories = await Promise.all(requests);
-  stories.unshift(...apiStories);
+  stories.push(...apiStories);
 
   console.log(`Adding ${apiStories.length} stories to DB`);
   await db.insert(Story).values(apiStories).onConflictDoNothing();
 }
+
+// Sort by the current topstories.json order, which might be different
+// from the db order.
+stories.sort((a, b) => storyIDs.indexOf(a.id) - storyIDs.indexOf(b.id));
 ---
 
 <html lang="en">
