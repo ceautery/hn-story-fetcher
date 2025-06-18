@@ -1,4 +1,6 @@
 ---
+export const prerender = false;
+
 import { db, inArray, Story } from "astro:db";
 import "../styles/global.css";
 
@@ -9,6 +11,7 @@ type ApiStory = {
   title: string;
 };
 
+console.log("Fetching story IDs");
 const storyListRequest = await fetch(
   "https://hacker-news.firebaseio.com/v0/topstories.json",
 );
@@ -19,8 +22,7 @@ const stories = await db
   .select()
   .from(Story)
   .where(inArray(Story.id, storyIDs));
-const dbIDs = stories.map((s) => s.id);
-const requestIDs = storyIDs.filter((id) => !dbIDs.includes(id));
+const requestIDs = storyIDs.filter((id) => !stories.find((s) => s.id === id));
 
 // If there are new stories, fetch them, add them to stories array and db
 if (requestIDs.length) {
