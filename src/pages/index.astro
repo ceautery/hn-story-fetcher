@@ -1,15 +1,6 @@
 ---
-export const prerender = false;
-
 import { db, inArray, Story } from "astro:db";
 import "../styles/global.css";
-
-type ApiStory = {
-  id: number;
-  time: number;
-  url: string;
-  title: string;
-};
 
 console.log("Fetching story IDs");
 const storyListRequest = await fetch(
@@ -38,8 +29,7 @@ if (requestIDs.length) {
   await db.insert(Story).values(apiStories).onConflictDoNothing();
 }
 
-// Sort by the current topstories.json order, which might be different
-// from the db order.
+// Sort by topstories.json order, which might be different from the db order.
 stories.sort((a, b) => storyIDs.indexOf(a.id) - storyIDs.indexOf(b.id));
 ---
 
@@ -55,7 +45,7 @@ stories.sort((a, b) => storyIDs.indexOf(a.id) - storyIDs.indexOf(b.id));
     <h1>Hacker News stories</h1>
     <table>
       {
-        stories.map((story: ApiStory) => (
+        stories.map((story) => (
           <tr>
             <td>{new Date(story.time * 1000).toLocaleString()}</td>
             <td>
