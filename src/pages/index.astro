@@ -23,6 +23,9 @@ if (requestIDs.length) {
     ),
   );
   const apiStories = await Promise.all(requests);
+  apiStories.forEach((s) => {
+    if (!s.url) s.url = `https://news.ycombinator.com/item?id=${s.id}`;
+  });
   stories.push(...apiStories);
 
   console.log(`Adding ${apiStories.length} stories to DB`);
